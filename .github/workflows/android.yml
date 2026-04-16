@@ -44,15 +44,15 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1 | tee gradle_build.log
-          echo "=== Checking for APK ==="
-          find . -name "*.apk" 2>/dev/null || echo "No APK found"
-          echo "=== APK locations ==="
-          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "Debug dir not found"
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -50
+          echo "=== APK Search ==="
+          find . -name "*.apk" -exec ls -lh {} \;
+          echo "=== Done ==="
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: polaris-app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/**/*.apk
+          if-no-files-found: error
           retention-days: 7
