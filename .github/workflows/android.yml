@@ -2,11 +2,9 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
-    inputs:
-      debug:
-        description: 'Build debug APK'
-        required: false
-        default: 'true'
+  push:
+    branches:
+      - master
 
 jobs:
   build:
@@ -38,22 +36,22 @@ jobs:
       - name: Create local.properties
         run: |
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          echo "java.home=$JAVA_HOME" >> android/local.properties
 
       - name: Build debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -50
-          echo "=== APK Search ==="
-find . -type f -name "*.apk" 2>/dev/null
+          ./gradlew assembleDebug --no-daemon 2>&1 | tail -30
+          echo "=== APK Search Results ==="
           find . -name "*.apk" -exec ls -lh {} \;
-          echo "=== Done ==="
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: polaris-app-debug
-          path: android/**/*.apk
-          if-no-files-found: error
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/**/*.apk
+          if-no-files-found: warn
           retention-days: 7
