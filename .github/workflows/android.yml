@@ -29,24 +29,44 @@ jobs:
 
       - name: Setup Android SDK
         run: |
+          mkdir -p /opt/android-sdk
           echo "sdk.dir=/opt/android-sdk" >> android/local.properties
+
+      - name: Export JS Bundle
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx expo export:embed --platform android --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res 2>&1 || \
+          npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res 2>&1
+
+      - name: Verify Bundle
+        run: |
+          ls -lh android/app/src/main/assets/ 2>/dev/null || echo "No assets dir"
+          if [ -f android/app/src/main/assets/index.android.bundle ]; then
+            echo "✅ JS Bundle created: $(ls -lh android/app/src/main/assets/index.android.bundle)"
+          else
+            echo "❌ JS Bundle NOT found!"
+            find . -name "*.bundle" 2>/dev/null | head -5
+          fi
 
       - name: Build debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --warning-mode all 2>&1 | tee build.log
-          echo "=== BUILD LOG TAIL ==="
-          tail -80 build.log
-          echo "=== SEARCHING FOR APK ==="
-          find . -name "*.apk" 2>/dev/null | head -20
-          find . -type d -name "outputs" 2>/dev/null | head -10
-          ls -laR app/build/outputs 2>/dev/null || echo "No outputs dir"
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
+          echo "=== Gradle tail ==="
+          tail -60 build.log
+          echo "=== APK search ==="
+          find . -name "*.apk" 2>/dev/null
+          ls -laR app/build/outputs/apk 2>/dev/null || echo "No apk outputs"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: polaris-app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/*/debug/*.apk
+            android/app/build/outputs/apk/*/*/*.apk
+            android/app/build/outputs/**/*.apk
           if-no-files-found: error
           retention-days: 3
